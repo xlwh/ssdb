@@ -263,20 +263,27 @@ void SSDBServer::reg_procs(NetworkServer *net){
 	REG_PROC(cluster_migrate_kv_data, "r");
 }
 
-
+// 服务的构造函数，在服务的初始化的阶段做了一些事情
 SSDBServer::SSDBServer(SSDB *ssdb, SSDB *meta, const Config &conf, NetworkServer *net){
+	// 设置好两个db的指针，一个db是存数据的，一个db是存一些meta数据的
 	this->ssdb = (SSDBImpl *)ssdb;
 	this->meta = meta;
 
 	net->data = this;
+	// 注册请求的处理的回调函数，后续请求的处理调用这个回调函数来进行请求的处理
 	this->reg_procs(net);
 
+	// 数据同步的限速
 	int sync_speed = conf.get_num("replication.sync_speed");
 
+	// 在后台进行数据dump的线程
 	backend_dump = new BackendDump(this->ssdb);
+	// 在后台进行数据同步的线程
 	backend_sync = new BackendSync(this->ssdb, sync_speed);
+	// 在后台进行数据的过期处理的线程
 	expiration = new ExpirationHandler(this->ssdb);
 	
+	// 创建集群
 	cluster = new Cluster(this->ssdb);
 	if(cluster->init() == -1){
 		log_fatal("cluster init failed!");
@@ -292,6 +299,7 @@ SSDBServer::SSDBServer(SSDB *ssdb, SSDB *meta, const Config &conf, NetworkServer
 				if(c->key != "slaveof"){
 					continue;
 				}
+				// ip
 				std::string ip = c->get_str("ip");
 				int port = c->get_num("port");
 				if(ip == ""){
@@ -313,6 +321,7 @@ SSDBServer::SSDBServer(SSDB *ssdb, SSDB *meta, const Config &conf, NetworkServer
 				int recv_timeout = c->get_num("recv_timeout");
 				
 				log_info("slaveof: %s:%d, type: %s", ip.c_str(), port, type.c_str());
+				// 创建一个slave
 				Slave *slave = new Slave(ssdb, meta, ip.c_str(), port, is_mirror);
 				if(!id.empty()){
 					slave->set_id(id);
@@ -322,6 +331,7 @@ SSDBServer::SSDBServer(SSDB *ssdb, SSDB *meta, const Config &conf, NetworkServer
 				}
 				slave->auth = c->get_str("auth");
 				slave->start();
+				// 把从的信息放到主里面
 				slaves.push_back(slave);
 			}
 		}

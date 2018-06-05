@@ -46,9 +46,10 @@ public:
 };
 
 // circular queue
+// 环形队列
 class BinlogQueue{
 private:
-	leveldb::DB *db;
+	leveldb::DB *db;        // 具体的leveldb
 	uint64_t min_seq_;
 	uint64_t last_seq;
 	uint64_t tran_seq;
@@ -65,7 +66,7 @@ private:
 	void merge();
 	bool enabled;
 public:
-	Mutex mutex;
+	Mutex mutex;     // 需要进行加锁
 
 	BinlogQueue(leveldb::DB *db, bool enabled=true, int capacity=20000000);
 	~BinlogQueue();

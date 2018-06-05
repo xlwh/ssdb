@@ -100,12 +100,14 @@ NetworkServer::~NetworkServer(){
 	delete reader;
 }
 
+// 网络服务的初始化
 NetworkServer* NetworkServer::init(const char *conf_file, int num_readers, int num_writers){
 	if(!is_file(conf_file)){
 		fprintf(stderr, "'%s' is not a file or not exists!\n", conf_file);
 		exit(1);
 	}
 
+	// 加载服务的配置
 	Config *conf = Config::load(conf_file);
 	if(!conf){
 		fprintf(stderr, "error loading conf file: '%s'\n", conf_file);
@@ -123,6 +125,7 @@ NetworkServer* NetworkServer::init(const char *conf_file, int num_readers, int n
 	return serv;
 }
 
+// 网络服务的初始化
 NetworkServer* NetworkServer::init(const Config &conf, int num_readers, int num_writers){
 	static bool inited = false;
 	if(inited){
@@ -145,6 +148,7 @@ NetworkServer* NetworkServer::init(const Config &conf, int num_readers, int num_
 			ip = "127.0.0.1";
 		}
 		
+		// 打开服务的tcp端口监听
 		serv->serv_link = Link::listen(ip, port);
 		if(serv->serv_link == NULL){
 			log_fatal("error opening server socket! %s", strerror(errno));
@@ -155,9 +159,11 @@ NetworkServer* NetworkServer::init(const Config &conf, int num_readers, int num_
 		// if client send RST between server's calls of select() and accept(),
 		// accept() will block until next connection.
 		// so, set server socket nonblock.
+		// 设置tcp请求参数
 		serv->serv_link->noblock();
 		log_info("server listen on %s:%d", ip, port);
 
+		// 设置服务的鉴权模式
 		std::string password;
 		password = conf.get_str("server.auth");
 		if(password.size() && (password.size() < 32 || password == "very-strong-password")){
@@ -170,6 +176,8 @@ NetworkServer* NetworkServer::init(const Config &conf, int num_readers, int num_
 		}else{
 			log_info("    auth    : on");
 		}
+
+		// 默认是不鉴权的
 		serv->need_auth = false;		
 		if(!password.empty()){
 			serv->need_auth = true;
@@ -223,6 +231,7 @@ NetworkServer* NetworkServer::init(const Config &conf, int num_readers, int num_
 	return serv;
 }
 
+// tcp网络服务
 void NetworkServer::serve(){
 	writer = new ProcWorkerPool("writer");
 	writer->start(num_writers);
@@ -240,6 +249,7 @@ void NetworkServer::serve(){
 	
 	uint32_t last_ticks = g_ticks;
 	
+	// 在这里处理请求
 	while(!quit){
 		double loop_stime = microtime();
 
@@ -265,11 +275,14 @@ void NetworkServer::serve(){
 
 		double loop_time_0 = microtime() - loop_stime;
 		
+		// 遍历取出所有的事件
 		for(int i=0; i<(int)events->size(); i++){
 			const Fdevent *fde = events->at(i);
+			// 可以连接
 			if(fde->data.ptr == serv_link){
 				Link *link = accept_link();
 				if(link){
+					// 连接数++
 					this->link_count ++;				
 					log_debug("new link from %s:%d, fd: %d, links: %d",
 						link->remote_ip, link->remote_port, link->fd(), this->link_count);
@@ -277,6 +290,7 @@ void NetworkServer::serve(){
 				}else{
 					log_debug("accept return NULL");
 				}
+			// 连接可读或者可写
 			}else if(fde->data.ptr == this->reader || fde->data.ptr == this->writer){
 				ProcWorkerPool *worker = (ProcWorkerPool *)fde->data.ptr;
 				ProcJob *job = NULL;
@@ -284,8 +298,10 @@ void NetworkServer::serve(){
 					log_fatal("reading result from workers error!");
 					exit(0);
 				}
+				// 处理请求
 				proc_result(job, &ready_list);
 			}else{
+				
 				proc_client_event(fde, &ready_list);
 			}
 		}
@@ -356,6 +372,7 @@ Link* NetworkServer::accept_link(){
 	return link;
 }
 
+// 处理客户端来的请求
 int NetworkServer::proc_result(ProcJob *job, ready_list_t *ready_list){
 	Link *link = job->link;
 	int result = job->result;
@@ -476,6 +493,7 @@ int NetworkServer::proc(ProcJob *job){
 			break;
 		}
 		
+		// 进行处理
 		job->cmd = proc_map.get_proc(req->at(0));
 		if(!job->cmd){
 			job->resp.push_back("client_error");
@@ -519,12 +537,13 @@ int NetworkServer::proc(ProcJob *job){
 
 
 /* built-in procs */
-
+// 返回ok
 static int proc_ping(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	resp->push_back("ok");
 	return 0;
 }
 
+// 返回服务的信息
 static int proc_info(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	resp->push_back("ok");
 	resp->push_back("ideawu's network server framework");
@@ -545,6 +564,7 @@ static int proc_info(NetworkServer *net, Link *link, const Request &req, Respons
 	return 0;
 }
 
+// 判断服务是否有权限
 static int proc_auth(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	if(req.size() != 2){
 		resp->push_back("client_error");
@@ -587,6 +607,7 @@ static int proc_list_allow_ip(NetworkServer *net, Link *link, const Request &req
 	return 0;
 }
 
+// 增加授权的ip
 static int proc_add_allow_ip(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	ENSURE_LOCALHOST();
 	if(req.size() != 2){
@@ -599,6 +620,7 @@ static int proc_add_allow_ip(NetworkServer *net, Link *link, const Request &req,
 	return 0;
 }
 
+// 删除授权的ip
 static int proc_del_allow_ip(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	ENSURE_LOCALHOST();
 	if(req.size() != 2){

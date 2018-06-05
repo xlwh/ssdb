@@ -6,15 +6,21 @@
 #include "strings.h"
 #include <stdio.h>
 
+// 服务入口
 int Application::main(int argc, char **argv){
 	conf = NULL;
 
+	// 打印欢迎信息
 	welcome();
+	// 解析命令行参数
 	parse_args(argc, argv);
+	// 服务初始化
 	init();
 
 	write_pid();
+	// 启动服务
 	run();
+	//删除pid文件
 	remove_pidfile();
 	
 	delete conf;
@@ -31,6 +37,7 @@ void Application::usage(int argc, char **argv){
 }
 
 void Application::parse_args(int argc, char **argv){
+	// 解析所有的命令行输入
 	for(int i=1; i<argc; i++){
 		std::string arg = argv[i];
 		if(arg == "-d"){
@@ -64,11 +71,13 @@ void Application::parse_args(int argc, char **argv){
 	}
 }
 
+// 服务初始化操作
 void Application::init(){
 	if(!is_file(app_args.conf_file.c_str())){
 		fprintf(stderr, "'%s' is not a file or not exists!\n", app_args.conf_file.c_str());
 		exit(1);
 	}
+	// 加载服务配置
 	conf = Config::load(app_args.conf_file.c_str());
 	if(!conf){
 		fprintf(stderr, "error loading conf file: '%s'\n", app_args.conf_file.c_str());
@@ -84,16 +93,20 @@ void Application::init(){
 
 	app_args.pidfile = conf->get_str("pidfile");
 
+	// 停止服务命令
 	if(app_args.start_opt == "stop"){
 		kill_process();
 		exit(0);
 	}
+
+	// 重启服务命令
 	if(app_args.start_opt == "restart"){
 		if(file_exists(app_args.pidfile)){
 			kill_process();
 		}
 	}
 	
+	// 下面是启动服务命令
 	check_pidfile();
 	
 	{ // logger
@@ -101,6 +114,7 @@ void Application::init(){
 		std::string log_level_;
 		int64_t log_rotate_size;
 
+		// 日志级别
 		log_level_ = conf->get_str("logger.level");
 		strtolower(&log_level_);
 		if(log_level_.empty()){
@@ -129,6 +143,7 @@ void Application::init(){
 
 	// WARN!!!
 	// deamonize() MUST be called before any thread is created!
+	// 在后台启动服务
 	if(app_args.is_daemon){
 		daemonize();
 	}
@@ -186,6 +201,7 @@ void Application::remove_pidfile(){
 	}
 }
 
+// 停止服务的操作
 void Application::kill_process(){
 	int pid = read_pid();
 	if(pid == -1){

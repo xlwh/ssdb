@@ -50,6 +50,7 @@ void ProcMap::set_proc(const std::string &c, const char *sflags, proc_t proc){
 	}
 }
 
+// 从map中找对应的处理函数
 Command* ProcMap::get_proc(const Bytes &str){
 	proc_map_t::iterator it = proc_map.find(str);
 	if(it != proc_map.end()){

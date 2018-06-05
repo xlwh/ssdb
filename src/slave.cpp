@@ -202,10 +202,12 @@ err:
 	return -1;
 }
 
+// 启动slave线程
 void* Slave::_run_thread(void *arg){
 	Slave *slave = (Slave *)arg;
 	const std::vector<Bytes> *req;
 	Fdevents select;
+	// 所有的事件
 	const Fdevents::events_t *events;
 	int idle = 0;
 	bool reconnect = false;
@@ -213,7 +215,9 @@ void* Slave::_run_thread(void *arg){
 #define RECV_TIMEOUT		200
 	int max_idle = (slave->recv_timeout * 1000) / RECV_TIMEOUT;
 
+	// 一直在执行
 	while(!slave->thread_quit){
+		// 重连
 		if(reconnect){
 			slave->status = DISCONNECTED;
 			reconnect = false;
@@ -222,6 +226,8 @@ void* Slave::_run_thread(void *arg){
 			slave->link = NULL;
 			sleep(1);
 		}
+
+		// 连接断开了
 		if(!slave->connected()){
 			if(slave->connect() != 1){
 				usleep(100 * 1000);
@@ -253,6 +259,7 @@ void* Slave::_run_thread(void *arg){
 		}
 
 		while(1){
+			// 读取到数据
 			req = slave->link->recv();
 			if(req == NULL){
 				log_error("link.recv error: %s, reconnecting to master", strerror(errno));
@@ -266,6 +273,7 @@ void* Slave::_run_thread(void *arg){
 				sleep(1);
 				break;
 			}else{
+				// 读取到数据，调用proc进行处理
 				if(slave->proc(*req) == -1){
 					goto err;
 				}
@@ -320,6 +328,7 @@ int Slave::proc(const std::vector<Bytes> &req){
 			}else{
 				log_debug("[%s] %s", sync_type, log.dumps().c_str());
 			}
+			// 处理数据同步
 			this->proc_sync(log, req);
 			break;
 		}
@@ -362,12 +371,14 @@ int Slave::proc_copy(const Binlog &log, const std::vector<Bytes> &req){
 				log_info("copy_count: %" PRIu64 ", last_seq: %" PRIu64 ", seq: %" PRIu64 "",
 					copy_count, this->last_seq, log.seq());
 			}
+			// 处理同步过来的数据
 			return proc_sync(log, req);
 			break;
 	}
 	return 0;
 }
 
+// 重做binglog
 int Slave::proc_sync(const Binlog &log, const std::vector<Bytes> &req){
 	switch(log.cmd()){
 		case BinlogCommand::KSET:

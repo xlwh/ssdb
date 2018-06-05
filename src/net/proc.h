@@ -23,17 +23,18 @@ class NetworkServer;
 typedef std::vector<Bytes> Request;
 typedef int (*proc_t)(NetworkServer *net, Link *link, const Request &req, Response *resp);
 
+// 命令列表的结构
 struct Command{
-	static const int FLAG_READ		= (1 << 0);
-	static const int FLAG_WRITE		= (1 << 1);
+	static const int FLAG_READ		= (1 << 0);     // 读操作命令
+	static const int FLAG_WRITE		= (1 << 1);     // 写操作命令
 	static const int FLAG_BACKEND	= (1 << 2);
 	static const int FLAG_THREAD	= (1 << 3);
 
-	std::string name;
-	int flags;
-	proc_t proc;
-	uint64_t calls;
-	double time_wait;
+	std::string name;     	// 命令名
+	int flags;              // 操作标记
+	proc_t proc;          	// 处理函数
+	uint64_t calls;        	// 命令的调用次数
+	double time_wait;      	// 命令处理的超时时间
 	double time_proc;
 	
 	Command(){
@@ -48,14 +49,15 @@ struct Command{
 struct ProcJob{
 	int result;
 	NetworkServer *serv;
-	Link *link;
-	Command *cmd;
+	Link *link;        // 具体的连接
+	Command *cmd;      // 具体的操作命令
 	double stime;     // in seconds
 	double time_wait; // in ms
 	double time_proc; // in ms
 	
-	const Request *req;
-	Response resp;
+	// 请求是不可修改的
+	const Request *req;   // 请求
+	Response resp;        // 响应数据
 	
 	ProcJob(){
 		result = 0;
@@ -110,6 +112,7 @@ private:
 public:
 	ProcMap();
 	~ProcMap();
+	// 设置请求
 	void set_proc(const std::string &cmd, const char *sflags, proc_t proc);
 	void set_proc(const std::string &cmd, proc_t proc);
 	Command* get_proc(const Bytes &str);

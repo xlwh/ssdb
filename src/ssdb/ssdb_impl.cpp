@@ -35,29 +35,35 @@ SSDBImpl::~SSDBImpl(){
 	}
 }
 
+// 打开一个leveldb
 SSDB* SSDB::open(const Options &opt, const std::string &dir){
+	// 直接创建一个leveldb
 	SSDBImpl *ssdb = new SSDBImpl();
+	// 设置leveldb的参数
 	ssdb->options.max_file_size = 32 * 1048576; // leveldb 1.20
-	ssdb->options.create_if_missing = true;
-	ssdb->options.max_open_files = opt.max_open_files;
+	ssdb->options.create_if_missing = true;                    // 文件不存在，会自动创建新的文件和文件夹
+	ssdb->options.max_open_files = opt.max_open_files;         // 最多可以打开多少个文件
 	ssdb->options.filter_policy = leveldb::NewBloomFilterPolicy(10);
-	ssdb->options.block_cache = leveldb::NewLRUCache(opt.cache_size * 1048576);
+	ssdb->options.block_cache = leveldb::NewLRUCache(opt.cache_size * 1048576);   // cache的大小
 	ssdb->options.block_size = opt.block_size * 1024;
 	ssdb->options.write_buffer_size = opt.write_buffer_size * 1024 * 1024;
-	ssdb->options.compaction_speed = opt.compaction_speed;
+	ssdb->options.compaction_speed = opt.compaction_speed;    // compaction限速
 	if(opt.compression == "yes"){
 		ssdb->options.compression = leveldb::kSnappyCompression;
 	}else{
 		ssdb->options.compression = leveldb::kNoCompression;
 	}
 
+	// leveldb状态码
 	leveldb::Status status;
 
+	// 开启一个leveldb
 	status = leveldb::DB::Open(ssdb->options, dir, &ssdb->ldb);
 	if(!status.ok()){
 		log_error("open db failed: %s", status.ToString().c_str());
 		goto err;
 	}
+	// 日志记录
 	ssdb->binlogs = new BinlogQueue(ssdb->ldb, opt.binlog, opt.binlog_capacity);
 
 	return ssdb;

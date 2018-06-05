@@ -5,11 +5,13 @@
 
 class Config;
 
+// 定义了一个公共的父类
 class Application{
 public:
 	Application(){};
 	virtual ~Application(){};
 
+	// 函数的入口
 	int main(int argc, char **argv);
 	
 	virtual void usage(int argc, char **argv);
@@ -18,11 +20,11 @@ public:
 
 protected:
 	struct AppArgs{
-		bool is_daemon;
-		std::string pidfile;
-		std::string conf_file;
-		std::string work_dir;
-		std::string start_opt;
+		bool is_daemon;   		 // 是否在后台执行
+		std::string pidfile;     // pid保存在哪
+		std::string conf_file;   // 配置文件在哪
+		std::string work_dir;    // 工作目录是什么
+		std::string start_opt;   // 启动命令
 
 		AppArgs(){
 			is_daemon = false;

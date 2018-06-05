@@ -231,6 +231,7 @@ void BinlogQueue::rollback(){
 	tran_seq = 0;
 }
 
+// 提交日志
 leveldb::Status BinlogQueue::commit(){
 	leveldb::WriteOptions write_opts;
 	leveldb::Status s = db->Write(write_opts, &batch);

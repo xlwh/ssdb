@@ -8,12 +8,14 @@ found in the LICENSE file.
 #include "net/proc.h"
 #include "net/server.h"
 
+// 读取数据
 int proc_get(NetworkServer *net, Link *link, const Request &req, Response *resp){
 	SSDBServer *serv = (SSDBServer *)net->data;
 	CHECK_NUM_PARAMS(2);
 	CHECK_KV_KEY_RANGE(1);
 
 	std::string val;
+	// 直接调用leveldb的get请求
 	int ret = serv->ssdb->get(req[1], &val);
 	resp->reply_get(ret, &val);
 	return 0;

@@ -5,6 +5,7 @@ found in the LICENSE file.
 */
 #include "t_kv.h"
 
+// 多个key写入
 int SSDBImpl::multi_set(const std::vector<Bytes> &kvs, int offset, char log_type){
 	Transaction trans(binlogs);
 
@@ -17,15 +18,20 @@ int SSDBImpl::multi_set(const std::vector<Bytes> &kvs, int offset, char log_type
 			return 0;
 			//return -1;
 		}
+		// key的长度不能长于255
 		if(key.size() > SSDB_KEY_LEN_MAX ){
 			log_error("name too long! %s", hexmem(key.data(), key.size()).c_str());
 			return 0;
 		}
+		// 取出value
 		const Bytes &val = *(it + 1);
 		std::string buf = encode_kv_key(key);
+		// 写log
 		binlogs->Put(buf, slice(val));
+		// 把封装好的数据写到binlog中，用于同步等使用的
 		binlogs->add_log(log_type, BinlogCommand::KSET, buf);
 	}
+	// 提交日志，让leveldb写入
 	leveldb::Status s = binlogs->commit();
 	if(!s.ok()){
 		log_error("multi_set error: %s", s.ToString().c_str());
